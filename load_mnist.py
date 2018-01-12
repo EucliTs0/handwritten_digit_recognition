@@ -3,14 +3,14 @@ import pandas as pd
 #import os
 from matplotlib import pyplot as plt
 #import cv2
-from skimage.filters import threshold_otsu
+from skimage.filters import threshold_otsu, gaussian
 #from PIL import Image
 #from pylab import contour
 from skimage.filters import roberts, sobel, scharr, prewitt
 #from skimage import feature
-#from skimage.morphology import erosion, dilation, opening, closing, white_tophat
+from skimage.morphology import erosion, dilation, opening, closing, white_tophat
 #from skimage.morphology import black_tophat, skeletonize, convex_hull_image
-#from skimage.morphology import disk
+from skimage.morphology import disk
 from scipy import ndimage 
 from skimage.morphology import disk
 from skimage.filters.rank import median
@@ -18,10 +18,27 @@ from skimage.filters.rank import median
 
 
 def img_preprocess(img):
+    img_blur = gaussian(img, sigma=1)
+    #thresh = threshold_otsu(img_medfilt)
+    thresh = threshold_otsu(img_blur)
+    #img_binary = img_medfilt > thresh
+    img_binary = img_blur > thresh
+    img_fill_holes = ndimage.binary_fill_holes(img_binary).astype(bool)
     
+    img_edge = sobel(img_fill_holes)    
+    thresh_edge = threshold_otsu(img_edge)
+    
+    binary_image = img_edge > thresh_edge
+        
+    return binary_image
+
+def img_preprocess2(img):
     img_medfilt = median(img)
+    
     thresh = threshold_otsu(img_medfilt)
+    
     img_binary = img_medfilt > thresh
+    
     img_fill_holes = ndimage.binary_fill_holes(img_binary).astype(bool)
     
     img_edge = sobel(img_fill_holes)    
@@ -33,15 +50,20 @@ def img_preprocess(img):
     binary_image = sobel(img_fill_holes)
     thresh_edge = threshold_otsu(binary_image)
     binary_image = binary_image > thresh_edge
-    
-    #img_fill_holes = ndimage.binary_fill_holes(img_binary).astype(bool)
-    #img_edge = sobel(img_fill_holes)
-    #th = threshold_otsu(img_edge)
-    
-    #binary_image = img_fill_holes
-    #binary_image = img_binary
-    #plt.imshow(binary_image, cmap = plt.cm.gray)
     return binary_image
+
+def img_preprocess3(img):
+       
+    thresh = threshold_otsu(img)
+    
+    img_binary = img > thresh
+    img_binary = ndimage.binary_fill_holes(img_binary).astype(bool)
+    
+    img_dilated = dilation(img_binary, disk(1))
+    #img_new = img_dilated - img_binary
+    img_new = np.bitwise_xor(img_dilated, img_binary)
+        
+    return img_new
 
 def plot_comparison(original, filtered, filter_name):
 

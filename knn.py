@@ -42,7 +42,7 @@ def direction_cost(x,y):
 def euclidean_distance(im1, im2):
     total = 0
     for i in xrange(8):
-        total += (im1[i] - im2[i]) ^ 2
+        total += ((im1[i] - im2[i]) * (im1[i] - im2[i]))
     return sqrt(total)
 
 # k-nearest Neighbors
@@ -115,12 +115,13 @@ def precompute_distances(X, edit = True):
 # output: features, labels of cleaned dataset
 def remove_outliers_bayesian_error(X, labels):
     n = len(labels)
-    shuffled_dataset = shuffle(list(zip(X, labels)))
+    shuffled_dataset = zip(X, labels)
+    shuffle(shuffled_dataset)
     X, labels = zip(*shuffled_dataset)
-    X1 = X[0:floor(n/2)]
-    X2 = X[floor(n/2)+1:n]
-    labels1 = labels[0:floor(n/2)]
-    labels2 = labels[floor(n/2) + 1:n]
+    X1 = list(X[0:int(floor(n/2))])
+    X2 = list(X[int(floor(n/2)):n])
+    labels1 = list(labels[0:int(floor(n/2))])
+    labels2 = list(labels[int(floor(n/2)):n])
     S1_size = len(labels1)
     S2_size = len(labels2)
     prev_S1_size = 0
@@ -129,39 +130,42 @@ def remove_outliers_bayesian_error(X, labels):
         prev_S1_size = S1_size
         prev_S2_size = S2_size
         # classify S1 with S2 and remove misclassified
-        for i in range(S1_size,0,-1):# have to go in reverse order to not throw off indices when deleting missclassified
+        for i in range((S1_size-1),-1,-1):# have to go in reverse order to not throw off indices when deleting missclassified
             pred_class = knn(X1[i],X2,labels2,k=1)
             if not pred_class == labels1[i]:
                 del labels1[i]
                 del X1[i]
         # classify S2 with S1 and remove misclassified
-        for i in range(S2_size,0,-1):
+        for i in range((S2_size-1),-1,-1):
             pred_class = knn(X2[i],X1,labels1,k=1)
             if not pred_class == labels2[i]:
                 del labels2[i]
                 del X2[i]
         S1_size = len(labels1)
         S2_size = len(labels2)
-    return X1.extend(X2), labels1.extend(labels2)
+    return X1 + X2, labels1 + labels2
 
 # function that removes irrelevant examples from dataset
 # input: features, labels of full dataset
 # output: features, labels of cleaned dataset
 def remove_irrelevant(X, labels):
+    n = len(labels)
     # randomly select example to start in storage
     start_index = randrange(0,len(labels))
-    storageX = X[start_index]
+    storageX = [X[start_index]]
     del X[start_index]
-    storageY = labels[start_index]
+    storageY = [labels[start_index]]
     del labels[start_index]
     storage_size = 1
     prev_storage_size = 0
     while(not storage_size == prev_storage_size):
         prev_storage_size = storage_size
-        for features, label in zip(X,labels):
-            if not knn(features, storageX, storageY, k=1) == label:
-                storageX.append(features)
-                storageY.append(label)
+        for i in range(n-storage_size-1,-1,-1):  # traverse in reverse so deleting doesn't mess up indices
+            if not knn(X[i], storageX, storageY, k=1) == labels[i]:
+                storageX.append(X[i])
+                storageY.append(labels[i])
+                del X[i]
+                del labels[i]
         storage_size = len(storageY)
     return storageX, storageY
 
